@@ -1,0 +1,3 @@
+step1_init_variables
+step2_read_trks
+step3_flips_trims_centerlines
