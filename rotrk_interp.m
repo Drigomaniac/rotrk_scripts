@@ -45,7 +45,10 @@ pp = repmat({[]},length(TRKS_IN.sstr));
 %parfor iTrk=1:length(TRKS_IN.sstr)
 for iTrk=1:length(TRKS_IN.sstr)
     tracts_tmp = TRKS_IN.sstr(iTrk);
-    
+    if size(TRKS_IN.sstr(iTrk).matrix,2) ~= 3
+        tracts_tmp=TRKS_IN.sstr(iTrk).matrix(:,1:3);
+        warning('tracts.matrix have scalar values. This values might be lost due to interpolation!')
+    end
     % Determine streamline segment lengths
     segs = sqrt(sum((tracts_tmp.matrix(2:end,1:3) - tracts_tmp.matrix(1:(end-1),1:3)).^2, 2));
     dist = [0; cumsum(segs)]; %eg. 1 2 3 4 ... <n_numbers of lines-1>
@@ -120,6 +123,7 @@ tmp_header_interp=TRKS_IN.header;
 tmp_header_interp.n_count=size(tracts_interp,3);
 for jj=1:size(tracts_interp,3)
     tmp_tracts_interp(jj).matrix=tracts_interp(:,:,jj);
+    tmp_tracts_interp(jj).vox_coord=round(tracts_interp(:,:,jj) ./ repmat(TRKS_IN.header.voxel_size, size(tracts_interp(:,:,jj),1),1 ));
     tmp_tracts_interp(jj).nPoints=size(tracts_interp(:,:,jj),1);
 end
 %~~~~~~~~~~~~~~~~~~~~~~~~DONE WITH SPLINE INTERPOLATION~~~~~~~~~~~~~~~~~~~

@@ -44,11 +44,12 @@ for ii=1:size(HEADER,2)
             new_DATA.fimbria_volDIL_R=RAW(2:end,ii);
         elseif strcmp(HEADER(ii),'Matched_ID')
             new_DATA.matchid=RAW(2:end,ii);
-            
-        elseif strcmp(HEADER(ii),'vol_fornix_joinedL_mm3')
-            new_DATA.vol_fornix_joinedL_mm3=RAW(2:end,ii);
-        elseif strcmp(HEADER(ii),'vol_fornix_joinedR_mm3')
-            new_DATA.vol_fornix_joinedR_mm3=RAW(2:end,ii);
+        elseif strcmp(HEADER(ii),'voltrx_FX_DOT_R')
+            new_DATA.voltrx_FX_DOT_R_mm3=RAW(2:end,ii);    
+        elseif strcmp(HEADER(ii),'voltrx_FX_DOT_L')
+            new_DATA.voltrx_FX_DOT_L_mm3=RAW(2:end,ii);
+        elseif strcmp(HEADER(ii),'voltrx_FX_DOT_bil')
+            new_DATA.voltrx_FX_DOT_BIL_mm3=RAW(2:end,ii);
         elseif strcmp(HEADER(ii),'n23AgeMatchedCodedPairs')
             new_DATA.agematched=RAW(2:end,ii);
         elseif strcmp(HEADER(ii),'T1_hippoVol_L(mm)')

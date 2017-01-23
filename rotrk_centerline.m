@@ -10,7 +10,10 @@ function [ TRKS_OUT ] = rotrk_centerline(TRKS_IN, method, selected_metric)
 %                                       selects the one with the highest
 %                                       mean selected_metric or viceversa)
 %           *selected_diffmetric    :if method=high_sc then we need scalars
-%                                   that can be passed as [ GFA NQA0 ]
+%                                   that can be passed as [ GFA NQA0 ].
+%                                   This information should come from
+%                                   TRKS_IN.sstr.matrix{4:end}
+%                        
 
 %OUT:
 %           TRKS_OUT
@@ -39,6 +42,7 @@ end
 if nargin < 2
     method='high_sc';
     selected_metric='GFA';
+    warning('No metric selected as the flag for centerline. Using GFA (default)');
 end
 
 %Assigned metric to do the cut....
@@ -52,8 +56,7 @@ for pp=1:numel(TRKS_IN.header.scalar_IDs)
 end
 %Verify that it has a non-empty value...
 if isempty(assigned_diffmetric) %~~~>related to "assign_col" (either check will work)
-        error(['The following metric: ''' selected_metric ''' (for selecting) ''' method ...
-            ''' centerline method is not found. Exiting now...']);
+        error(['The following metric: ' selected_metric ' (for selecting) ' method ' centerline method is not found. Exiting now...']);
 end
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -66,8 +69,8 @@ highsc_vals=nan(size(TRKS_IN.sstr,2),1);
 
 %CALCULATING THE SPECIFIC VARIABLES
 for ii=1:size(TRKS_IN.sstr,2)
-    mean_vals(ii)=mean(TRKS_IN.sstr(ii).matrix(:,assigned_col));
-    median_vals(ii)=mean(TRKS_IN.sstr(ii).matrix(:,assigned_col));
+    mean_vals(ii)=mean(TRKS_IN.sstr(ii).vox_coord(:,assigned_col));
+    median_vals(ii)=mean(TRKS_IN.sstr(ii).vox_coord(:,assigned_col));
    
 end
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,10 +83,14 @@ switch method
         [val_high, idx ] = max(mean_vals);
     case 'low_sc'
         [val_low, idx ] = min(mean_vals);
+    case 'median' %<~~~NOT TESTED AS 01/20/2017
+        [val_low, idx ] = median(median_vals);
 end
 
 TRKS_OUT.sstr.matrix=TRKS_IN.sstr(idx).matrix;
+TRKS_OUT.sstr.vox_coord=TRKS_IN.sstr(idx).vox_coord;
 TRKS_OUT.sstr.nPoints=size(TRKS_IN.sstr(idx).matrix,1);
+
 TRKS_OUT.header.specific_name=strcat(TRKS_IN.header.specific_name,'_centerline');
 %Remove another naming convention...
 TRKS_OUT.header.specific_name=strrep(TRKS_OUT.header.specific_name,'_trimmedx2','');

@@ -34,6 +34,7 @@ ind=find(V_vol>0);
 tmp_xyz = [ x-1 y-1 z-1 ones(numel(x),1) ] ;
 
 roi_mean_xyz= mean(abs(tmp_xyz*mat2));
+%roi_mean_xyz=round(mean(tmp_xyz));
 roi_mean_xyz=roi_mean_xyz(1:3);
 catch 
     error(['rotrk: the error must be when you invoked' roi_input 'to mean it. ' ] )

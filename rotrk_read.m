@@ -1,8 +1,8 @@
-function [tract] = rotrk_read(filePath, identifier, vol_data,specific_name)
+function [tract_out] = rotrk_read(filePath, identifier, vol_data,specific_name)
 %function [header,tracts] = rotrk_read(filePath, identifier, vol_data, specific_name)
 %~~%Modified from along_tracts to input 2 arguments ( additional identifier)
 %   -Changes made by rdp20 to account for vol_data orientation (not
-%   necessarily LPS! ) 
+%   necessarily LPS! )
 %   -Changes are denoted by %/~~~ and %~~~~/
 %~~
 %TRK_READ - Load .trk files
@@ -12,9 +12,9 @@ function [tract] = rotrk_read(filePath, identifier, vol_data,specific_name)
 %    filePath - Full path to .trk file or in struc form (filePath.id
 %               filePath.filename)
 %    identifier - This will get us the filename ID if found
-%    vol_data - vol_data with accurate orientation! 
+%    vol_data - vol_data with accurate orientation!
 %    specific_name - will give you a unique identifier for what
-%                     this tract is (e.g. dot_fornix). Default: 'none'                   
+%                     this tract is (e.g. dot_fornix). Default: 'none'
 %
 % Outputs:
 %    tract
@@ -26,9 +26,9 @@ function [tract] = rotrk_read(filePath, identifier, vol_data,specific_name)
 
 
 
-if nargin < 3, error('Please provide at least 3 arguments as the nii_vol is needed for orientation purposes') ; end 
+if nargin < 3, error('Please provide at least 3 arguments as the nii_vol is needed for orientation purposes') ; end
 
-if nargin < 4, specific_name='none' ; end 
+if nargin < 4, specific_name='none' ; end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -42,7 +42,7 @@ if iscell(identifier) ; identifier=cell2char(identifier); end
 fid    = fopen(filePath, 'r');
 header = get_header(fid);
 
-header.specific_name = specific_name; 
+header.specific_name = specific_name;
 
 
 %/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -60,18 +60,18 @@ tolerance=0.0001;
 flag_x=0;flag_y=0; flag_z=0;
 
 if ~(abs(tmp_vol.mat(1,1) - header.vox_to_ras(1,1))) < tolerance
-     warning('Volume matrix in the x coordinate is not equal to the trk matrix. Flipping to fit same orientation')
-     flag_x=-1;
+    warning('Volume matrix in the x coordinate is not equal to the trk matrix. Flipping to fit same orientation')
+    flag_x=-1;
 end
 
 if ~(abs(tmp_vol.mat(2,2) - header.vox_to_ras(2,2))) < tolerance
     warning('Volume matrix in the y coordinate is not equal to the trk matrix. Flipping to fit same orientation')
-     flag_y=-1;
+    flag_y=-1;
 end
 
 if ~(abs(tmp_vol.mat(3,3) - header.vox_to_ras(3,3)) < tolerance)
     warning('Volume matrix in the z coordinate is not equal to the trk matrix. Flipping to fit same orientation')
-     flag_z=-1;
+    flag_z=-1;
 end
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~/
 
@@ -83,7 +83,7 @@ if header.hdr_size~=1000
 end
 
 if header.hdr_size~=1000, error('Header length is wrong. Make sure is gunzipped!'), end
-% 
+%
 % % Check orientation
 % [tmp ix] = max(abs(header.image_orientation_patient(1:3)));
 % [tmp iy] = max(abs(header.image_orientation_patient(4:6)));
@@ -97,10 +97,10 @@ header.voxel_size = header.voxel_size([ix iy iz]);
 
 % Parse in body
 if header.n_count > 0
-	max_n_trks = header.n_count;
+    max_n_trks = header.n_count;
 else
-	% Unknown number of tracts; we'll just have to read until we run out.
-	max_n_trks = inf;
+    % Unknown number of tracts; we'll just have to read until we run out.
+    max_n_trks = inf;
 end
 
 %/~~~~~~~~~~~~~~~~
@@ -111,25 +111,25 @@ header.id=identifier;
 
 iTrk = 1;
 while iTrk <= max_n_trks
-	pts = fread(fid, 1, 'int');
-	if feof(fid)
-		break;
-	end
+    pts = fread(fid, 1, 'int');
+    if feof(fid)
+        break;
+    end
     tracts(iTrk).nPoints = pts;
     tracts(iTrk).matrix  = fread(fid, [3+header.n_scalars, tracts(iTrk).nPoints], '*float')';
     if header.n_properties
         tracts(iTrk).props = fread(fid, header.n_properties, '*float');
     end
     %/~~~~~~~~~~~~~~~COMMENTED OUT FROM ALONG_TRACTS! NOT SURE IF IT WORKS....
-%     % Modify orientation of tracts (always LPS) to match orientation of volume
-%     coords = tracts(iTrk).matrix(:,1:3);
-%     coords = coords(:,[ix iy iz]);
-%     if header.image_orientation_patient(ix) < 0
-%         coords(:,ix) = header.dim(ix)*header.voxel_size(ix) - coords(:,ix);
-%     end
-%     if header.image_orientation_patient(3+iy) < 0
-%         coords(:,iy) = header.dim(iy)*header.voxel_size(iy) - coords(:,iy);
-%     end
+    %     % Modify orientation of tracts (always LPS) to match orientation of volume
+    %     coords = tracts(iTrk).matrix(:,1:3);
+    %     coords = coords(:,[ix iy iz]);
+    %     if header.image_orientation_patient(ix) < 0
+    %         coords(:,ix) = header.dim(ix)*header.voxel_size(ix) - coords(:,ix);
+    %     end
+    %     if header.image_orientation_patient(3+iy) < 0
+    %         coords(:,iy) = header.dim(iy)*header.voxel_size(iy) - coords(:,iy);
+    %     end
     %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~/
     
     %/~~~~~~~~~~~~~~~~~~~~
@@ -171,15 +171,15 @@ while iTrk <= max_n_trks
         end
     end
     %~~~~~~~~~~~~~~~~~~~~/
-
+    
     tracts(iTrk).matrix(:,1:3) = coords;
-	iTrk = iTrk + 1;
+    iTrk = iTrk + 1;
 end
 
 
 header.pad2=header.voxel_order;
 if header.n_count == 0
-	header.n_count = length(tracts);
+    header.n_count = length(tracts);
 end
 
 fclose(fid);
@@ -187,17 +187,54 @@ header.voxel_order=header.voxel_order;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Create the structure tract ('struct' type):
-tract.header=header;
-tract.sstr=tracts;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Here we deal with xyz coordinates in MNI voxel system (creating
+%tract.sstr.vox_coord ) and removing repeats
+tract_out.header=header;
 %%These should be of a 'char' type:
-tract.filename=fullfile(filePath);
-tract.id=identifier;
+tract_out.filename=fullfile(filePath);
+tract_out.id=identifier;
+
+for ii=1:size(tracts,2)
+    pos=round(tracts(ii).matrix(:,1:3) ./ repmat(header.voxel_size, tracts(ii).nPoints,1));
+    %pos=pos+1;
+    %CHECKING FOR DUPLICATED:"
+    posnew_idx=0;
+    
+    %WITHOUT REMOVING DUPLICATES:
+%     tract_out.sstr(ii).matrix(:,1:3)=tracts(ii).matrix(:,1:3);
+%     tract_out.sstr(ii).vox_coord(:,1:3)=pos(:,1:3);
+    
+    %REMOVING DUPLICATES:
+    for hh=1:size(pos,1)
+        %Check all subsequent but the last one
+        if hh~=size(pos,1)
+            %Check if XYZ are the same coordinates, if so skip the
+            %coordinate
+            if ~(pos(hh,1) == pos(hh+1,1) && pos(hh,2) == pos(hh+1,2) && pos(hh,3) == pos(hh+1,3))
+                posnew_idx=1+posnew_idx;
+                %posnew{ii}(posnew_idx,:)=pos(hh,:);
+                tract_out.sstr(ii).matrix(posnew_idx,1:3)=tracts(ii).matrix(hh,1:3);
+                tract_out.sstr(ii).vox_coord(posnew_idx,1:3)=pos(hh,1:3);
+            end
+        else
+            %Copying the last value...(if equal to previous, the
+            %previous if statment will take care of it)
+            posnew_idx=1+posnew_idx;
+            %posnew{ii}(posnew_idx,:)=pos(hh,:);
+            tract_out.sstr(ii).matrix(posnew_idx,1:3)=tracts(ii).matrix(hh,1:3);
+            tract_out.sstr(ii).vox_coord(posnew_idx,1:3)=pos(hh,1:3);
+        end
+    end
+    % "END CHECKING FOR DUPLICATES
+    tract_out.sstr(ii).nPoints=size(tract_out.sstr(ii).matrix,1);
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%LOCAL FUNCTION%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function header = get_header(fid)
 
 header.id_string                 = fread(fid, 6, '*char')';

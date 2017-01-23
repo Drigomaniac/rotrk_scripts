@@ -1,23 +1,40 @@
-function rotrk_plot(TRKS_IN, volume, sortedby, dx,  varargin )
+function rotrk_plot(TRKS_IN, plot_color, sortedby, dx,  varargin )
 %function rotrk_plot(header,tracts, volume, sortedby,limit_to, header2, tracts2, header3, tracts3 )
 % Inputs:
-%    TRKS_IN:
+%   TRKS_IN:
 %       TRKS_IN.header          -> struct/cell file header (*make sure this is larger
 %       TRKDS_IN.tracts         -> struct/cell file strlines
-%
-%    volume         --> volume to be overlaid (optional, use '' if not
-%                       needed. <Still needed to implement>)
+
+%   plot_color      --> color of the plot (e.g. 'rainbow' 'r' 'rr' 'r.' 'b' 'bb' 'c' 'cc' 'g' 'k' 'kk' 'kline'  )       
+%                       *will replace TRKS_IN.plot_params.color!!
 %    sortedby       --> sorted by this variable (e.g. header.data.age, so put 'age')
-%                       Here, more implementation is needed to change
-%                       variable to other than age.
 %    dx             --> limit to a specific input to the chosen Dx
 %                       (e.g. header.data.dx, so put 'AD' or 'NC')
-%    varargin       --> pass other tracts (e.g. TRKS_IN2, TRKS_IN3, ...)
-% Outputs:
-%    The plot :P
+%
+%   ***
+%   varargin       --> pass other tracts (e.g. TRKS_IN2, TRKS_IN3, ...)
+%   varargin       --> or the following parameters:
+%                   ('remove' 'limits' ) --> remove xyz axis
+%                   ('add' 'sex' ) 
+%                   ('add' 'age' )
+%                   ('add' 'motion' ) --> add these values to the plot
+%
+%   ***
+%   THESE PARAMETERS BELOW WILL BE READ FROM TRKS_IN.plot.params: 
+%   TRKS_IN.plot_params.color
+%   TRKS_IN.plot_params.orientation
+%   TRKS_IN.plot_params.xlim
+%   TRKS_IN.plot_params.ylim
+%   TRKS_IN.plot_params.zlim
+% OUTPUT:
+%    The plot :P~~~! 
 
 
-if nargin < 2
+if nargin <2 ; plot_color=''; end
+if nargin <3 ; sortedby=''; end
+if nargin <4 ; dx=''; end
+
+if nargin < 3  %ONLY A SINGLE PLOT CONFIGURATION
     n_plots=numel(TRKS_IN);
     n_subplots=ceil(n_plots/9); %e.g. for 23 values, we need at least 3 subplots (9x9x5)
     %~~~end of checking # of plots needed.
@@ -29,7 +46,7 @@ if nargin < 2
     plot_idx=1;
     if numel(TRKS_IN)==1
         disp(['In: ' TRKS_IN.id '... '])
-        local_rotrk_goplot(TRKS_IN)
+        local_rotrk_goplot(TRKS_IN, plot_color,'1st',varargin)
     else
         for ii=1:n_subplots % 1 through 3
             figure, hold on
@@ -41,7 +58,7 @@ if nargin < 2
             for jj=1:subplot_idx
                 subplot(3,3,jj)
                 disp(['In: ' TRKS_IN{plot_idx}.id '... '])
-                local_rotrk_goplot(TRKS_IN{plot_idx})
+                local_rotrk_goplot(TRKS_IN{plot_idx},plot_color,'1st',varargin)
                 title([ '\color{red}' strrep(TRKS_IN{plot_idx}.id,'_','\_')], 'Interpreter', 'tex')
                 hold off
                 plot_idx=plot_idx+1;
@@ -50,7 +67,7 @@ if nargin < 2
     end
     
     
-else
+else %NOW WE DEAL WITH A CELL ARRAY THAT CONTAIN MANY PLOTS
     
     %INITIALIZE CHECKING...
     if isempty(sortedby) ; warning('No sortedby argument passed. Plotting w/o sorting...'); end
@@ -116,14 +133,17 @@ else
         for jj=1:subplot_idx
             subplot(3,3,jj)
             disp(['In: ' TRKS_IN_toplot{plot_idx}.id '... ']);
-            local_rotrk_goplot(TRKS_IN{plot_idx})
+            local_rotrk_goplot(TRKS_IN{plot_idx},plot_color,'1st',varargin)
             for kk=1:numel(varargin) %--->Check how many more TRKS_in are being passed)
-                for mm=1:numel(varargin{kk})
-                    if strcmp(varargin{kk}{mm}.id,TRKS_IN{plot_idx}.id)
-                        local_rotrk_goplot(varargin{kk}{mm})
+                if iscell(varargin{kk}) %if it's not cell, its 'remove' or the 'add' flag and its folow up arguments
+                    for mm=1:numel(varargin{kk})
+                        if strcmp(varargin{kk}{mm}.id,TRKS_IN{plot_idx}.id)
+                            local_rotrk_goplot(varargin{kk}{mm},plot_color,'','')
+                        end
                     end
                 end
             end
+            
             %TITLE AND COLOR:
             if strcmp(dx,'AD')
                 title([ '\color{red}' strrep(TRKS_IN_toplot{plot_idx}.id,'_','\_')], 'Interpreter', 'tex')
@@ -142,25 +162,48 @@ end
 %END OF FILE ~~~
 
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %STARTING LOCAL FUNCTION
 % Plot streamlines
-function local_rotrk_goplot(single_TRKS_IN)
-for numtrks = 1:size(single_TRKS_IN.sstr,2)
-    matrix = single_TRKS_IN.sstr(numtrks).matrix;
-    [maxpts, maxidx ]  = max(arrayfun(@(x) size(x.matrix, 1), single_TRKS_IN.sstr));
-    
-    if ~isfield(single_TRKS_IN,'plot_params') %if no .plot_params field, initialize params
-        plot_color='r';
-        orientation='xy';
-    else
-        plot_color=single_TRKS_IN.plot_params.color;
-        orientation=single_TRKS_IN.plot_params.orientation;
+function local_rotrk_goplot(single_TRKS_IN,plot_color,what_plot,varargin)
+
+
+%FIRST TAKING CARE OF THE COLOR!
+%Setting up the values for the 1st plot only!
+if nargin < 2
+    what_plot='';
+end
+
+%COLOR INIT FOR STREAMLINE FIRST:
+color=plot_color;
+%CHECKING COLOR PARAMETER
+if isfield(single_TRKS_IN,'plot_params')
+    %COLOR
+    if strcmp(plot_color,'')
+        if isfield(single_TRKS_IN.plot_params, 'color')
+            color=single_TRKS_IN.plot_params.color;
+        else
+            color='r';
+        end
     end
+end
+if strcmp(color,''); color='k'; end
+%%END OF COLOR INIT
+
+
+
+%FOR LOOP TO ITERATE BETWEEN STREAMLINS WITHIN A TRACT
+for numtrks = 1:size(single_TRKS_IN.sstr,2)
+    %READING THE MATRIX:
+    matrix = single_TRKS_IN.sstr(numtrks).matrix;
+    
     %Check if single_TRKS_IN.plotparams exists (if not go with defaults...)
     hold on
-    switch plot_color
+    switch color
         case 'rainbow'
+            [maxpts, maxidx ]  = max(arrayfun(@(x) size(x.matrix, 1), single_TRKS_IN.sstr));
             cline(matrix(:,1), matrix(:,2), matrix(:,3), (0:(size(matrix, 1)-1))/(maxpts))
         case 'myrainbow_4'
             if size(matrix,2) < 4
@@ -188,7 +231,7 @@ for numtrks = 1:size(single_TRKS_IN.sstr,2)
             plot3(matrix(:,1), matrix(:,2), matrix(:,3),'c')
         case 'g'
             plot3(matrix(:,1), matrix(:,2), matrix(:,3),'g')
-            plot3(matrix(1,1), matrix(1,2), matrix(1,3), 'g.')
+            plot3(matrix(1,1), matrix(1,2), matrix(1,3), 'b.')
         case 'gg'
             plot3(matrix(:,1), matrix(:,2), matrix(:,3),'g')
         case 'k'
@@ -205,44 +248,120 @@ for numtrks = 1:size(single_TRKS_IN.sstr,2)
             hold on
     end
 end
-
-xlabel('x'), ylabel('y'), zlabel('z', 'Rotation', 0)
-box off
-axis image
-axis ij
-switch orientation
-    case 'xy'
-        view(-90,0);
-    case 'yz'
-        view(-90,0);
-    case 'xz'
-        view(0,0)
-    case '-3d'
-        view(37.5,-30)
-    case 'fornix'
-        %view(229,0)
-        view(-80,24)
-    case 'fornix2'
-        view(124,-10)
-    case 'fornix3'
-        view(180,0)
-    case 'fornix4'
-        %view(-125,-8)
-        view(-107,6)
-    case 'cingL'
-        %view(229,0)
-        view(131,10)
-    case 'crus'
-        %view(229,0)
-        view(-42,39)
-    case 'ori1'
-        %view(229,0)
-        view(120,0)
-    case 'ori2'
-        %view(229,0)
-        view(-180,90)
-    otherwise
-        view(3)
-end
 %Reverse x-orientation so it looks like right is right in the image!
 set(gca,'xdir','reverse'); shg
+
+%%~~~~~~CHECKING PARAMETERS ONLY FOR FIRST TRKS_IN (in case of varargin)!!
+if strcmp(what_plot,'1st')
+ %Setting up the values for the 1st plot only!
+    %CHECKING PARAMETERS
+    %the plot parameters:
+    if isfield(single_TRKS_IN,'plot_params')
+        %COLOR
+        if strcmp(plot_color,'')
+            if isfield(single_TRKS_IN.plot_params, 'color')
+                color=single_TRKS_IN.plot_params.color;
+            else
+                color='r';
+            end
+        end
+        %ORIENTATION
+        if isfield(single_TRKS_IN.plot_params, 'orientation')
+            orientation=single_TRKS_IN.plot_params.orientation;
+        else
+            orientation='xy';
+        end
+        %XYZ-LIMITS
+        if isfield(single_TRKS_IN.plot_params, 'xlim')
+            xlim( single_TRKS_IN.plot_params.xlim);
+        end
+        if isfield(single_TRKS_IN.plot_params, 'ylim')
+            ylim( single_TRKS_IN.plot_params.ylim);
+        end
+        if isfield(single_TRKS_IN.plot_params, 'zlim')
+            zlim( single_TRKS_IN.plot_params.zlim);
+        end
+    end
+    
+    %other parameters that may have been passed as inputs:
+    for ii=1:size(varargin{1},2)
+        %disp(['numtrks: ' num2str(numtrks) ' and ii is: ' num2str(ii)])
+        if strcmp(varargin{1}{ii},'add')
+            try
+                %the follow up argument will tell you what to add...
+                if strcmp(varargin{1}{ii+1},'sex')
+                    text(35,100,25 ,[ 'Sex: ' single_TRKS_IN.header.data.sex] );
+                end
+                if strcmp(varargin{1}{ii+1},'age')
+                    text(35,100,30 ,[ 'Age:' num2str(single_TRKS_IN.header.data.age) ]);
+                end
+                if strcmp(varargin{1}{ii+1},',motion')
+                    text(35,100,15 ,[ 'Motion:' num2str(single_TRKS_IN.header.data.diffmotion) ])
+                end
+            catch
+                error('error when adding the add option. Have you added a 2nd argument?');
+            end
+        end
+        if strcmp(varargin{1}{ii},'remove')
+            try
+                %the follow up argument will tell you what to add...
+                if strcmp(varargin{1}{ii+1},'limits')
+                    set(gca,'xcolor',get(gcf,'color'));
+                    set(gca,'xtick',[]);
+                    
+                    set(gca,'ycolor',get(gcf,'color'));
+                    set(gca,'ytick',[]);
+                    
+                    set(gca,'zcolor',get(gcf,'color'));
+                    set(gca,'ztick',[]);
+                    
+                end
+            catch
+                error('error when adding the remove option. Hve you added a 2nd argument?');
+            end
+        end
+    end
+    
+    xlabel('x'), ylabel('y'), zlabel('z', 'Rotation', 0)
+    box off
+    axis image
+    axis ij
+    
+    switch orientation
+        case 'xy'
+            view(-90,0);
+        case 'yz'
+            view(-90,0);
+        case 'xz'
+            view(0,0)
+        case '-3d'
+            view(37.5,-30)
+        case 'fornix'
+            %view(229,0)
+            %view(-80,24)
+            %view(65,20)
+            view(76,14 )  %so compatible with age and sex displaying coordinates
+        case 'fornix2'
+            view(124,-10)
+        case 'fornix3'
+            view(180,0)
+        case 'fornix4'
+            %view(-125,-8)
+            view(-107,6)
+        case 'cingL'
+            %view(229,0)
+            view(131,10)
+        case 'crus'
+            %view(229,0)
+            view(-42,39)
+        case 'ori1'
+            %view(229,0)
+            view(120,0)
+        case 'ori2'
+            %view(229,0)
+            view(-180,90)
+        otherwise
+            view(3)
+    end
+end
+

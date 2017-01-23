@@ -25,6 +25,7 @@ TRKS_OUT.header=TRKS_IN.header;
 TRKS_OUT.id=TRKS_IN.id;
 TRKS_OUT.filename=TRKS_IN.filename;
 TRKS_OUT.sstr=TRKS_IN.sstr;
+%~~~> NOT YET AS IT WILL CHANGE BASED ON DUPLICATE COORDINATES --> TRKS_OUT.sstr=TRKS_IN.sstr;
 %~~~
 
 
@@ -35,21 +36,33 @@ if nargin < 2
     error('Make sure you add a scalar volime as your 2nd argument!')
 end
 
-
-scalar_count=1;
+if isfield(TRKS_IN.header,'scalar_IDs')
+    scalar_count=size(TRKS_IN.header.scalar_IDs,2);
+    warning('Adding scalars to already existing data!');
+else
+    scalar_count=1;
+end
 for pp=1:size(vol_input_diffmetric,1)
-    H_vol= spm_vol(cell2char(vol_input_diffmetric{pp}.filename));
+    if size(vol_input_diffmetric,1) ==1 
+        H_vol= spm_vol(cell2char(vol_input_diffmetric.filename));
+    else
+        H_vol= spm_vol(cell2char(vol_input_diffmetric{pp}.filename));
+    end
     V_vol=spm_read_vols(H_vol);
     
     %Updating fields...
-    TRKS_OUT.header.n_scalars = scalar_count;
+    %TRKS_OUT.header.n_scalars = scalar_count; ~~> Not updates as scalars
+    %wont be in sstr.matrix but instead in sstr.vox_coord!!
     scalar_count=scalar_count+1;
-    if pp==1
-        TRKS_OUT.header.scalar_IDs={vol_input_diffmetric{1}.identifier};
+    if size(vol_input_diffmetric,1) == 1
+        TRKS_OUT.header.scalar_IDs={vol_input_diffmetric.identifier};
     else
-        TRKS_OUT.header.scalar_IDs=[ TRKS_OUT.header.scalar_IDs {vol_input_diffmetric{pp}.identifier} ] ;
+        if pp==1
+            TRKS_OUT.header.scalar_IDs={vol_input_diffmetric{1}.identifier};
+        else
+            TRKS_OUT.header.scalar_IDs=[ TRKS_OUT.header.scalar_IDs {vol_input_diffmetric{pp}.identifier} ] ;
+        end
     end
-    
     % Loop over # of tracts (slow...any faster way?)
     for ii=1:length(TRKS_IN.sstr)
         % Translate continuous vertex coordinates into discrete voxel coordinates
@@ -65,15 +78,22 @@ for pp=1:size(vol_input_diffmetric,1)
         %   ***Most likely this is a problem with indexing either starting at 0
         %   or 1
         %**
-        % Translate continuous vertex coordinates into discrete voxel coordinates
-        pos = ceil(TRKS_IN.sstr(ii).matrix(:,1:3) ./ repmat(TRKS_IN.header.voxel_size, TRKS_IN.sstr(ii).nPoints,1));
         
+        
+        %%======================================================================
+        % Translate continuous vertex coordinates into discrete voxel coordinates
+        pos =TRKS_IN.sstr(ii).vox_coord(:,1:3);
+        pos=pos+1;
+        
+        %%======================================================================
         % Index into volume to extract scalar values
         ind                = sub2ind(TRKS_IN.header.dim, pos(:,1), pos(:,2), pos(:,3));
-        scalars             = V_vol(ind);
-        TRKS_OUT.sstr(ii).matrix = [TRKS_OUT.sstr(ii).matrix, scalars];
+        cur_scalar             = V_vol(ind);
         
+        TRKS_OUT.sstr(ii).vox_coord = [TRKS_OUT.sstr(ii).vox_coord, cur_scalar];
     
+        TRKS_OUT.sstr(ii).matrix = TRKS_IN.sstr(ii).matrix;
+        TRKS_OUT.sstr(ii).nPoints = TRKS_IN.sstr(ii).nPoints;
     end
     
 end

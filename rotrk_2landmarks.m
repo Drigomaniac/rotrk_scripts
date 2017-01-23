@@ -83,6 +83,7 @@ for ii=1:numel(TRKS_IN)
             disp([ 'Flipping to origin next to the first_roi'])
             TRKS_IN{ii}=rotrk_flip(TRKS_IN{ii},[ rotrk_ROImean(first_roi{kk}.filename) ] );
             disp([ 'Trimming first_roi'])
+            disp([ TRKS_IN{ii}.header.id ' and 1stROI: ' first_roi{kk}.id ])
             TRKS_trimmed{ii} = rotrk_trimmedbyROI(TRKS_IN{ii},first_roi{kk} , 'above');
         end
     end
@@ -90,7 +91,7 @@ for ii=1:numel(TRKS_IN)
         %"for loop" for the second_roi and compare IDs w/ trks...
         if strcmp(TRKS_IN{ii}.header.id,second_roi{kk}.id)
             disp([ 'Trimming second_roi'])
-            disp([ 'KK is: ' num2str(kk) ' and ii is: ' num2str(ii) ])
+            disp([ TRKS_IN{ii}.header.id ' and 2ndROI: ' second_roi{kk}.id ])
             TRKS_trimmed_nointerp{ii}  = rotrk_trimmedbyROI(TRKS_trimmed{ii},second_roi{kk} , 'below');
         end
     end
@@ -108,12 +109,16 @@ for ii=1:numel(TRKS_IN)
     %NOW WORKING ON SELECTING A SPECIFIC CENTERLINE...
     TRKS_centerline{ii} = rotrk_centerline(TRKS_trimmed_interp{ii}, method, selected_diffmetric);
     
-    %FINALLY ADDING SCALARS TO CENTERLIENS
-     for pp=1:size(diffmetric,2)
-        if strcmp(cell2char(diffmetric{1,pp}.id), TRKS_centerline{ii}.header.id)
-            TRKS_centerline{ii} = rotrk_add_sc(TRKS_centerline{ii}, diffmetric(:,pp));
-        end
-    end
+    %%##############################
+    %SCALAR SHOULDN"T BE ADDED AS THEIR ARE NEEDED FOR PICKING THE
+    %CENTERLINE!!
+    %%##############################
+%     %FINALLY ADDING SCALARS TO CENTERLIENS
+%      for pp=1:size(diffmetric,2)
+%         if strcmp(cell2char(diffmetric{1,pp}.id), TRKS_centerline{ii}.header.id)
+%             TRKS_centerline{ii} = rotrk_add_sc(TRKS_centerline{ii}, diffmetric(:,pp));
+%         end
+%     end
 end
 
 
